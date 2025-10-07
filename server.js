@@ -2,6 +2,9 @@ const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const authRoutes = require("./routes/authRoutes");
+const technicianRoutes = require("./routes/technicianRoutes");
+
 
 // Load environment file based on NODE_ENV
 const envFile =
@@ -72,6 +75,10 @@ app.get("/health", async (req, res) => {
     mongoConnection: mongoState === 1 ? "✅ Connected" : "❌ Not connected",
   });
 });
+
+app.use("/api/auth", authRoutes);
+app.use("/api/technicians", technicianRoutes);
+
 
 
 // Start server
