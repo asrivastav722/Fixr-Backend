@@ -1,88 +1,53 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const dotenv = require("dotenv");
-const cors = require("cors");
-const authRoutes = require("./routes/authRoutes");
-const technicianRoutes = require("./routes/technicianRoutes");
+const express = require('express');
+const twilio = require('twilio');
+const User = require('./models/User');
+const jwt = require('jsonwebtoken');
 
+const client = new twilio('OR1baa18530032d0eb7c0119c0db7405cc', 'YOUR_TWILIO_AUTH_TOKEN');
 
-// Load environment file based on NODE_ENV
-const envFile =
-  process.env.NODE_ENV === "production"
-    ? ".env.production"
-    : ".env.local";
-dotenv.config({ path: envFile });
+// 1. Send OTP Route
+app.post('/api/auth/send-otp', async (req, res) => {
+    const { phone } = req.body; // Expecting format like +918081111867
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+    try {
+        // 1. Save OTP to your MongoDB
+        await User.findOneAndUpdate({ phone }, { otp }, { upsert: true });
 
-// Safe MongoDB connection
-async function connectMongo() {
-  try {
-    if (!process.env.MONGO_URI) {
-      throw new Error("MONGO_URI is missing in your environment file!");
+        // 2. Send REAL SMS
+        await client.messages.create({
+            body: `Your TechConnect code is ${otp}. Valid for 10 mins.`,
+            from: 'YOUR_TWILIO_NUMBER',
+            to: phone
+        });
+
+        res.json({ success: true, message: "SMS Sent!" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Twilio Error: Check if number is verified in trial" });
     }
-
-    // Encode password automatically
-    const uriParts = process.env.MONGO_URI.split("://");
-    const [protocol, rest] = uriParts;
-    const encodedURI = rest.replace(/:(.*)@/, (_, pwd) => `:${encodeURIComponent(pwd)}@`);
-    const finalURI = `${protocol}://${encodedURI}`;
-
-    await mongoose.connect(finalURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-
-    console.log("✅ MongoDB connected successfully");
-  } catch (err) {
-    console.error("❌ MongoDB connection failed:");
-
-    if (err.codeName === "AtlasError") {
-      console.error("- Possible authentication issue (bad username/password).");
-    } else if (err.message.includes("ECONNREFUSED") || err.message.includes("failed to connect")) {
-      console.error("- Possible network/whitelist issue (check IP access list).");
-    }
-
-    console.error(err);
-    process.exit(1); // Exit process on failure
-  }
-}
-
-// Connect to MongoDB
-connectMongo();
-
-// Test route
-app.get("/", (req, res) => {
-  res.json({
-    message: "Fixr Backend is running 🚀",
-    env: process.env.NODE_ENV,
-  });
 });
 
-app.get("/health", async (req, res) => {
-  const mongoState = mongoose.connection.readyState;
-  /*
-    readyState:
-    0 = disconnected
-    1 = connected
-    2 = connecting
-    3 = disconnecting
-  */
-  res.json({
-    status: "Backend running",
-    mongoConnection: mongoState === 1 ? "✅ Connected" : "❌ Not connected",
-  });
-});
+// 2. Verify OTP Route
+app.post('/api/auth/verify-otp', async (req, res) => {
+    const { phone, otp } = req.body;
+    try {
+        const user = await User.findOne({ 
+            phone, 
+            otp, 
+            otpExpires: { $gt: Date.now() } 
+        });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/technicians", technicianRoutes);
+        if (!user) return res.status(400).json({ error: "Invalid or expired OTP" });
 
+        // Clear OTP and verify user
+        user.otp = null;
+        user.isVerified = true;
+        await user.save();
 
-
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+        const token = jwt.sign({ id: user._id }, "SECRET", { expiresIn: '7d' });
+        res.json({ token, user });
+    } catch (err) {
+        res.status(500).json({ error: "Verification failed" });
+    }
 });

@@ -5,30 +5,30 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "cross-env NODE_ENV=production node server.js",
-    "dev": "cross-env NODE_ENV=development nodemon server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Fixr-Dev/Fixr-Backend.git"
+    "url": "git+https://github.com/asrivastav722/Fixr-Backend.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Fixr-Dev/Fixr-Backend/issues"
+    "url": "https://github.com/asrivastav722/Fixr-Backend/issues"
   },
-  "homepage": "https://github.com/Fixr-Dev/Fixr-Backend#readme",
+  "homepage": "https://github.com/asrivastav722/Fixr-Backend#readme",
   "dependencies": {
-    "bcryptjs": "^3.0.2",
+    "bcryptjs": "^3.0.3",
+    "body-parser": "^2.2.0",
     "cors": "^2.8.5",
-    "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.19.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.10"
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.19.1",
+    "nodemailer": "^8.0.1",
+    "nodemon": "^3.1.10",
+    "twilio": "^5.12.1"
   }
 }
