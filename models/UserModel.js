@@ -1,31 +1,60 @@
+import mongoose from "mongoose";
+
 const userSchema = new mongoose.Schema({
-  phone: { type: String, required: true, unique: true },
-  email: { type: String, lowercase: true, trim: true },
-  fullName: { type: String, required: true },
-  profileImage: { type: String }, // URL to S3/Cloudinary
+  phone: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    trim: true 
+  },
+  fullName: { 
+    type: String, 
+    required: true,
+    trim: true, 
+    default:"Verified User"
+  },
+  email: { 
+    type: String, 
+    lowercase: true, 
+    trim: true 
+  },
+  profileImage: { 
+    type: String,
+    default: "https://i.pravatar.cc/150?u=guest" 
+  },
   role: { 
     type: String, 
-    enum: ['customer', 'technician', 'admin'], 
+    enum: ['customer', 'technician'], 
     default: 'customer' 
   },
-  gender: { type: String, enum: ['male', 'female', 'other'] },
-  
-  // App Preferences
-  theme: { type: String, enum: ['light', 'dark'], default: 'light' },
-  languages: [{ type: String, default: ['Hindi', 'English'] }],
-  
-  // Geographic Data (Current)
-  lastKnownLocation: {
+  // Matches your Redux theme state
+  theme: { 
+    type: String, 
+    enum: ['light', 'dark'], 
+    default: 'light' 
+  },
+  // Geo-spatial data for "Technicians Near You" logic
+  location: {
     type: { type: String, default: 'Point' },
-    coordinates: [Number], // [longitude, latitude]
+    coordinates: { type: [Number], default: [82.1851, 27.4099] }, // [Long, Lat]
     address: String,
     city: String
   },
-  
-  isActive: { type: Boolean, default: true },
-  joinedAt: { type: Date, default: Date.now },
-  otpVerified: { type: Boolean, default: false }
-}, { timestamps: true });
+  // For the "Active for Hire" toggle in your Profile UI
+  isAvailable: { 
+    type: Boolean, 
+    default: false 
+  },
+  otp: { type: String },
+  otpExpires: { type: Date }
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-// Index for distance queries
-userSchema.index({ lastKnownLocation: "2dsphere" });
+// Create a 2dsphere index for location-based searching
+userSchema.index({ location: "2dsphere" });
+
+const User = mongoose.model("User", userSchema);
+export default User;
