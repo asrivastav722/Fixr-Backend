@@ -36,7 +36,8 @@ export const verifyOtp = async (req, res) => {
       user = await User.create({ 
         phone, 
         fullName,
-        role: 'customer' // Default role
+        role: 'customer', // Default role
+        email:""
       });
     }
 
@@ -68,6 +69,65 @@ export const getMe = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     res.status(200).json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// --- 3. Update User Profile (PUT) ---
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { type, value } = req.body; 
+
+    let updateData = {};
+
+    switch (type) {
+      case "personal_details":
+        // Value expected: { fullName, email, city, profileImage }
+        const { fullName, email, city, profileImage } = value;
+
+        if (fullName) {
+          if (fullName.trim().length < 2) return res.status(400).json({ message: "Name too short" });
+          updateData.fullName = fullName.trim();
+        }
+
+        if (email) {
+          updateData.email = email.toLowerCase().trim();
+        }
+
+        if (profileImage) {
+          // Basic check to ensure it's a valid URL string
+          updateData.profileImage = profileImage;
+        }
+        
+        if (city) {
+          updateData.location = {
+            ...req.user.location, 
+            city: city.trim()
+          };
+        }
+        break;
+
+      case "availability":
+        updateData = { isAvailable: !!value };
+        break;
+
+      case "theme":
+        updateData = { theme: value };
+        break;
+
+      default:
+        return res.status(400).json({ message: "Invalid update type" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).select("-otp -otpExpires");
+
+    res.status(200).json({ success: true, user: updatedUser });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

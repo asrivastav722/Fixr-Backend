@@ -22,10 +22,18 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: "https://i.pravatar.cc/150?u=guest" 
   },
-  role: { 
-    type: String, 
+  roles: { 
+    type: [String], // Cleaner syntax for Array of Strings
     enum: ['customer', 'technician'], 
-    default: 'customer' 
+    default: ['customer'],
+    lowercase: true,
+    required: true,
+    validate: {
+      validator: function(v) {
+        return v && v.length > 0;
+      },
+      message: 'A user must have at least one role.'
+    }
   },
   // Matches your Redux theme state
   theme: { 
