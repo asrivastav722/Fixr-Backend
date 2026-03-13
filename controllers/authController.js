@@ -55,7 +55,6 @@ const verifyOtp = async (req, res) => {
         phone, 
         fullName,
         role: 'customer',
-        email: ""
       });
     }
 
