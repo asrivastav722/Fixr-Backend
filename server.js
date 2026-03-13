@@ -45,6 +45,10 @@ app.use((err, req, res, next) => {
   });
 });
 
+app.get("/ping", (req, res) => {
+  res.status(200).send("Server is awake");
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
