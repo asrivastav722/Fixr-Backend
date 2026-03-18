@@ -51,51 +51,61 @@ app.use('/updates', express.static(updatesFolder, {
 
 /**
  * EXPO MANIFEST ENDPOINT
- * This is the heart of the OTA system.
+ * This version uses a Stable ID and File-Based Timestamps to fix the "One-Time Update" issue.
  */
 app.get('/api/manifest', (req, res) => {
   try {
     const bundlePath = path.join(updatesFolder, 'index.android.bundle');
-    if (!fs.existsSync(bundlePath)) return res.status(404).json({ error: "No bundle" });
+    
+    // 1. Verify the bundle exists
+    if (!fs.existsSync(bundlePath)) {
+      console.log("❌ Bundle not found at:", bundlePath);
+      return res.status(404).json({ error: "No bundle found" });
+    }
 
     const fileBuffer = fs.readFileSync(bundlePath);
     
-    // 1. Generate the hash
-    const hash = crypto.createHash('sha256').update(fileBuffer).digest('base64')
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); 
+    // 2. Generate the Expo-compliant Base64 SHA256 Hash
+    const hash = crypto.createHash('sha256')
+      .update(fileBuffer)
+      .digest('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, ''); 
 
-    // 2. Generate a STABLE but UNIQUE ID for this specific file content
+    // 3. Generate a STABLE but UNIQUE ID (Manifest ID)
+    // We derive this from the file content so it only changes when the code changes.
     const fileContentHash = crypto.createHash('md5').update(fileBuffer).digest('hex');
-    const stableId = `${fileContentHash.slice(0,8)}-${fileContentHash.slice(8,12)}-4${fileContentHash.slice(12,15)}-a${fileContentHash.slice(16,19)}-${fileContentHash.slice(20,32)}`;
+    const stableId = `${fileContentHash.slice(0, 8)}-${fileContentHash.slice(8, 12)}-4${fileContentHash.slice(12, 15)}-a${fileContentHash.slice(16, 19)}-${fileContentHash.slice(20, 32)}`;
 
-    // 3. Get the ACTUAL file modification time so the app knows it's "newer"
+    // 4. Get the ACTUAL file modification time
+    // This tells the APK that this version is "newer" than the one it currently has.
     const stats = fs.statSync(bundlePath);
     const fileTimestamp = stats.mtime.toISOString();
 
-    // HEADERS (Keep exactly as your working version)
-    // 1. Force the browser/app to NEVER cache this JSON
+    // --- CONSOLIDATED HEADERS ---
+    
+    // Clear cache to prevent 304 Not Modified errors
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');
 
-    // 2. Expo Specific Headers
+    // Expo-specific protocol headers
     res.setHeader('expo-protocol-version', '0');
     res.setHeader('expo-sfv-version', '0');
     res.setHeader('content-type', 'application/json');
     
-    // 3. CRITICAL: Remove the ETag
-    // Without this, the server sends a "fingerprint" and the app 
-    // sends it back, resulting in a 304 if the file hasn't changed 
-    // in a way the server's default logic understands.
-    res.removeHeader('ETag');
-
-    // 4. Ngrok bypass (highly recommended since you are using ngrok)
+    // Bypass NGROK warning page
     res.setHeader('ngrok-skip-browser-warning', 'true');
 
+    // Remove ETag to force a fresh 200 OK response
+    res.removeHeader('ETag');
+
+    // 5. Send the Manifest
     res.json({
-      id: stableId, // The ID changes only if the file changes
-      createdAt: fileTimestamp, // The timestamp reflects when the file was last updated
+      id: stableId,
+      createdAt: fileTimestamp, 
       runtimeVersion: req.headers['expo-runtime-version'] || "1.0.0",
       launchAsset: {
         hash: hash,
@@ -104,14 +114,18 @@ app.get('/api/manifest', (req, res) => {
         url: `https://${req.get('host')}/updates/index.android.bundle`
       },
       assets: [],
-      metadata: {}
+      metadata: {
+        branchName: "main",
+        // We include the stableId here to force the native side to notice the change
+        bundleUpdateId: stableId 
+      }
     });
 
-    console.log(`✅ Manifest [${stableId}] sent at ${fileTimestamp}`);
+    console.log(`✅ Manifest [${stableId}] sent. File Time: ${fileTimestamp}`);
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Error" });
+    console.error("Critical Manifest Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
