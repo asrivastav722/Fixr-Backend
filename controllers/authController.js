@@ -24,7 +24,7 @@ const requestOtp = async (req, res) => {
 
     // 3. Trigger Local SMS Gateway
     // We use axios.get because your working URL is a GET request with query params
-    await axios.get(`http://192.168.1.6:8080/send-sms`, {
+    await axios.get(`${process.env.OTP_GATEWAY_URL}/send-sms`, {
       params: {
         phone: phone,
         message: message

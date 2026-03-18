@@ -1,0 +1,26 @@
+name: Fixr Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted  # Runs on your home server runner
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          path: fixr-backend-repo # Forces GitHub to pull into this specific folder
+
+      - name: Rebuild Backend
+        run: |
+          # Move to the root folder where docker-compose.yml lives
+          cd ..
+          
+          # Rebuild only the backend service and restart
+          docker-compose up --build -d backend
+          
+          # Clean up old images to save space
+          docker image prune -f
