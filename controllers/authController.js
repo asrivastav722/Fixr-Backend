@@ -1,20 +1,19 @@
+const Technician = require("../models/Technician");
 const User = require("../models/UserModel.js");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 const { S3Client } = require("@aws-sdk/client-s3");
 const { Upload } = require("@aws-sdk/lib-storage");
-
-
-const { MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_BUCKET,MINIO_SCECRET_KEY,BASE_URL,OTP_GATEWAY_URL,JWT_EXPIRY,JWT_SECRET} =process.env
+const { MINIO_ENDPOINT,PORT,MINIO_PORT,MINIO_ACCESS_KEY,MINIO_BUCKET,MINIO_SECRET_KEY,BASE_URL,OTP_GATEWAY_URL,JWT_EXPIRY,JWT_SECRET} =process.env
 
 
 // --- 0. MinIO Configuration ---
 const s3Client = new S3Client({
     region: "us-east-1",
-    endpoint: MINIO_ENDPOINT, // Ensure this matches your docker-compose service name
+    endpoint: `http://${MINIO_ENDPOINT}:${MINIO_PORT}`, // Ensure this matches your docker-compose service name
     credentials: {
         accessKeyId: MINIO_ACCESS_KEY,
-        secretAccessKey: MINIO_SCECRET_KEY,
+        secretAccessKey: MINIO_SECRET_KEY,
     },
     forcePathStyle: true,
 });
@@ -66,27 +65,47 @@ const verifyOtp = async (req, res) => {
 };
 
 // --- 3. Upload to MinIO ---
+
+
 const handleUpload = async (req, res) => {
-    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    // 1. Check if Multer caught the file
+    if (!req.file) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "No file received by the server." 
+        });
+    }
 
     try {
+        // 2. Create a unique key for your 10 HDD storage
+        const fileExtension = req.file.originalname.split('.').pop();
+        const fileKey = `uploads/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+        
+        console.log(`🚀 Uploading ${req.file.originalname} to MinIO as ${fileKey}...`);
+
+        // 3. Setup the Parallel Upload
         const parallelUploads3 = new Upload({
-            client: s3Client,
+            client: s3Client, // Your MinIO S3 client configuration
             params: { 
                 Bucket: MINIO_BUCKET, 
-                Key: `uploads/${Date.now()}-${req.file.originalname}`, 
-                Body: req.file.buffer,
+                Key: fileKey, 
+                Body: req.file.buffer, // <--- THIS IS THE MAGIC BUFFER
                 ContentType: req.file.mimetype 
             },
         });
 
-        const result = await parallelUploads3.done();
-        // Replace 'localhost' with your actual Server IP for mobile access
-        const fileUrl = `${BASE_URL}/fixr-uploads/${result.Key}`;
+        await parallelUploads3.done();
         
-        res.status(200).send({ success: true, url: fileUrl });
+        console.log("✅ Upload Complete:", fileKey);
+        res.status(200).send({ success: true, key: fileKey });
+
     } catch (error) {
-        res.status(500).send({ error: error.message });
+        console.error("❌ MinIO Storage Error:", error);
+        res.status(500).send({ 
+            success: false, 
+            message: "Failed to write to storage array", 
+            error: error.message 
+        });
     }
 };
 
@@ -151,6 +170,97 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const registerTechnician = async (req, res) => {
+  try {
+    const { userId, ...techData } = req.body;
+
+    // 1. Check if user exists
+    const user = await User.findOne({ userId });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // 2. Check if already a technician to prevent duplicates
+    if (user.roles.includes("technician")) {
+      return res.status(400).json({ message: "User is already a technician" });
+    }
+
+    // 3. Create Technician Profile
+    const newTech = new Technician({ userId, ...techData });
+    await newTech.save();
+
+    // 4. Update User Role (Promote)
+    user.roles.push("technician");
+    await user.save();
+
+    res.status(201).json({ message: "Technician registered successfully", data: newTech });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getAllTechnicians = async (req, res) => {
+  try {
+    const { category, minPrice, maxPrice } = req.query;
+    let filter = { is_active: true };
+
+    if (category) filter.category = category;
+    if (minPrice || maxPrice) {
+      filter.starting_price = { 
+        $gte: minPrice || 0, 
+        $lte: maxPrice || 100000 
+      };
+    }
+
+    const techs = await Technician.find(filter).populate({
+        path: 'userId',
+        select: 'fullName profileImage location' // Pulls common data from UserModal
+    });
+    
+    res.status(200).json(techs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getTechnicianProfile = async (req, res) => {
+  try {
+    const tech = await Technician.findOne({ userId: req.params.userId }).populate('userId');
+    if (!tech) return res.status(404).json({ message: "Profile not found" });
+    res.status(200).json(tech);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateTechnician = async (req, res) => {
+  try {
+    const updatedTech = await Technician.findOneAndUpdate(
+      { userId: req.params.userId },
+      { $set: req.body },
+      { new: true }
+    );
+    res.status(200).json(updatedTech);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteTechnicianProfile = async (req, res) => {
+  try {
+    // 1. Remove tech profile
+    await Technician.findOneAndDelete({ userId: req.params.userId });
+
+    // 2. Downgrade User Role (Optional: remove 'technician' from array)
+    await User.findOneAndUpdate(
+      { userId: req.params.userId },
+      { $pull: { roles: "technician" } }
+    );
+
+    res.status(200).json({ message: "Technician status removed" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
 // EXPORT ALL FUNCTIONS
-module.exports = { requestOtp, verifyOtp, getMe, updateProfile, handleUpload };
+module.exports = { requestOtp,registerTechnician,getAllTechnicians,getTechnicianProfile,getTechnicianProfile,updateTechnician,deleteTechnicianProfile, verifyOtp, getMe, updateProfile, handleUpload };

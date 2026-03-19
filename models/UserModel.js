@@ -28,6 +28,16 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: "https://i.pravatar.cc/150?u=guest" 
   },
+  languages: {
+    type: [String], // Specifies an array of strings
+    default: [],
+  },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female', 'Others'],
+    default:"Male",
+    required: true, // Optional: ensures the field isn't left empty
+  },
   roles: { 
     type: [String], // Cleaner syntax for Array of Strings
     enum: ['customer', 'technician'], 
