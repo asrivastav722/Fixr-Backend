@@ -186,18 +186,46 @@ const getMe = async (req, res) => {
             updateData.isAvailable = isAvailable;
           }
 
-          // Logic for Location Update
-          // Ensure coordinates are saved as [longitude, latitude] for MongoDB 2dsphere
-          if (city || address || coordinates) {
-            updateData.location = {
-              ...req.user.location, // Keep existing fields if not provided
-              type: "Point",
-              coordinates: coordinates ? [parseFloat(coordinates.longitude), parseFloat(coordinates.latitude)] : req.user.location.coordinates,
-              address: address ? address.trim() : req.user.location.address,
-              city: city ? city.trim() : req.user.location.city
-            };
-          }
-          break;
+         
+
+        if (city || address || coordinates) {
+          // 1. Get existing values to prevent overwriting with nulls
+          const existingLoc = req.user.location || {};
+          const existingCoords = existingLoc.coordinates || [0.0, 0.0];
+
+          let newLng = existingCoords[0];
+          let newLat = existingCoords[1];
+
+          // 2. Handle the Payload Array: [82.185081, 27.410189]
+          if (Array.isArray(coordinates) && coordinates.length === 2) {
+            const lng = parseFloat(coordinates[0]);
+                    const lat = parseFloat(coordinates[1]);
+
+                    // Only update if they are valid numbers (prevents NaN crash)
+                    if (!isNaN(lng) && !isNaN(lat)) {
+                      newLng = lng;
+                      newLat = lat;
+                    }
+                  } 
+                  // Optional: Handle object format if sent from other parts of the app
+                  else if (coordinates && typeof coordinates === 'object') {
+                    const lat = coordinates.latitude || coordinates.lat;
+                    const lng = coordinates.longitude || coordinates.lng;
+                    if (!isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+                      newLng = parseFloat(lng);
+                      newLat = parseFloat(lat);
+                    }
+                  }
+
+                  // 3. Construct the updateData according to your Schema
+                  updateData.location = {
+                    type: "Point",
+                    coordinates: [newLng, newLat], // [Longitude, Latitude]
+                    address: address !== undefined ? address.trim() : existingLoc.address,
+                    city: city !== undefined ? city.trim() : existingLoc.city
+                  };
+                }
+                  break;
 
         case "availability":
           updateData = { isAvailable: !!value };
