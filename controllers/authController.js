@@ -232,13 +232,13 @@ const getAllTechnicians = async (req, res) => {
     const { lat, lng, search, radius = 30 } = req.query;
     const pipeline = [];
 
-    // 1. Geospatial Search (Coordinates must be [lng, lat])
+    // 1. Geospatial Search (Automatic sorting by distance starts here)
     if (lat && lng) {
       pipeline.push({
         $geoNear: {
           near: { type: "Point", coordinates: [parseFloat(lng), parseFloat(lat)] },
           distanceField: "distance",
-          maxDistance: parseInt(radius) * 1000, // KM to Meters
+          maxDistance: parseInt(radius) * 1000,
           spherical: true,
           query: { roles: "technician" } 
         }
@@ -247,51 +247,66 @@ const getAllTechnicians = async (req, res) => {
       pipeline.push({ $match: { roles: "technician" } });
     }
 
-    // 2. Join with the technicians collection
+    // 2. Join with Technicians Collection
     pipeline.push({
       $lookup: {
         from: "technicians", 
         localField: "userId",
         foreignField: "userId", 
-        as: "techData"
+        as: "techDetails"
       }
     });
 
-    // 3. Flatten the joined array
+    // 3. Flatten techDetails
     pipeline.push({ 
       $unwind: {
-        path: "$techData",
+        path: "$techDetails",
         preserveNullAndEmptyArrays: true 
       }
     });
 
-    // 4. Text Search (Search name or profession)
+    // 4. Text Search
     if (search && search.trim() !== "") {
       pipeline.push({
         $match: {
           $or: [
             { fullName: { $regex: search, $options: "i" } },
-            { "techData.profession": { $regex: search, $options: "i" } }
+            { "techDetails.profession": { $regex: search, $options: "i" } },
+            { "techDetails.skills": { $in: [new RegExp(search, "i")] } }
           ]
         }
       });
     }
 
-    // 5. Merge all fields into the top level
+    // 5. Merge all fields and return
     pipeline.push({
-      $replaceRoot: { 
-        newRoot: { $mergeObjects: ["$techData", "$$ROOT"] } 
+      $project: {
+        // Keep everything from the User document
+        user_data: "$$ROOT", 
+        // Move techDetails fields to the top level for easy access
+        tech_data: "$techDetails",
+        distance: 1
       }
     });
 
-    // 6. Final cleanup and sorting
-    pipeline.push({
-      $project: { techData: 0 }, // Remove the extra nested object
-      $sort: { distance: 1 }      // Nearest first
-    });
+    // 6. Explicit Sort by Distance (Ascending)
+    pipeline.push({ $sort: { distance: 1 } });
 
     const results = await User.aggregate(pipeline);
-    res.status(200).json(results);
+
+    // Flattening the response so fields aren't nested under 'user_data'
+    const flattenedTechs = results.map(item => {
+      const { user_data, tech_data, distance } = item;
+      // Merge User + Tech + Distance into one flat object
+      return { 
+        ...user_data, 
+        ...tech_data, 
+        distance,
+        techDetails: undefined // Clean up the raw join field
+      };
+    });
+
+    res.status(200).json(flattenedTechs);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
