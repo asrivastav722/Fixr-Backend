@@ -2,13 +2,19 @@ const express = require('express');
 const router = express.Router();
 const locationController = require('../controllers/locationController');
 
-// Route to get all Indian States
-router.get('/states', locationController.getIndianStates);
+// Get list of all countries
+router.get('/countries', locationController.getCountries);
 
-// Route to get cities for a specific state
-router.get('/cities/:stateCode', locationController.getCitiesByState);
+// Get all states in a specific country (e.g., /states/IN)
+router.get('/states/:countryCode', locationController.getStatesByCountry);
 
-// Route to search for a city by name (useful for the mobile search bar)
-router.get('/search-city', locationController.searchCities);
+// Get all cities in a specific country (e.g., /cities/IN)
+router.get('/cities/:countryCode', locationController.getCitiesByCountry);
+
+// Get cities in a specific state of a country (e.g., /cities/IN/MH)
+router.get('/cities/:countryCode/:stateCode', locationController.getCitiesByState);
+
+// Search for a city within a specific country (e.g., /search/IN?q=mumbai)
+router.get('/search/:countryCode', locationController.searchCitiesInCountry);
 
 module.exports = router;
