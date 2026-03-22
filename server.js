@@ -6,6 +6,7 @@ const Minio = require('minio');
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3"); // Import both here
 const connectDB = require('./utils/db.js');
 const authRoutes = require('./routes/authRoutes.js');
+const locationRoutes = require('./routes/locationRoutes.js');
 const apkUpdateRoutes = require('./routes/apkUpdateRoutes.js');
 
 dotenv.config();
