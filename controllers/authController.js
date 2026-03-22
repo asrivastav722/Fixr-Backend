@@ -252,8 +252,8 @@ const getAllTechnicians = async (req, res) => {
     pipeline.push({
       $lookup: {
         from: "technicians", 
-        localField: "_id",
-        foreignField: "user", 
+        localField: "userId",
+        foreignField: "userId", 
         as: "techData"
       }
     });
