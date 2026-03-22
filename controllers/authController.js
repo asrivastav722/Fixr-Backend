@@ -111,10 +111,35 @@ const handleUpload = async (req, res) => {
 
 const getMe = async (req, res) => {
   try {
-    // req.user.id comes from your JWT middleware (which we will create next)
-    const user = await User.findById(req.user.id).select("-otp");
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.status(200).json({ success: true, user });
+    // 1. Fetch the base User data (excluding sensitive OTP/Password)
+    const user = await User.findById(req.user.id).select("-otp").lean();
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    let completeUser = { ...user };
+
+    // 2. If the user is a technician, fetch their professional profile
+    if (user.isTechnician) {
+      const techProfile = await Technician.findOne({ userId: user._id }).lean();
+      
+      if (techProfile) {
+        // 3. Merge them: Professional details + User details
+        // .lean() is used so we get plain JS objects instead of Mongoose Documents
+        completeUser = { 
+          ...user, 
+          technicianProfile: techProfile 
+        };
+      }
+    }
+
+    // 4. Return the combined object
+    res.status(200).json({ 
+      success: true, 
+      user: completeUser 
+    });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
