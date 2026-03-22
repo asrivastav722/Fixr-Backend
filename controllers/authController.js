@@ -111,33 +111,33 @@ const handleUpload = async (req, res) => {
 
 const getMe = async (req, res) => {
   try {
-    // 1. Fetch the base User data (excluding sensitive OTP/Password)
+    // 1. Fetch User (Exclude OTP, use .lean() for easier merging)
     const user = await User.findById(req.user.id).select("-otp").lean();
     
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // 2. Check if "technician" exists inside the role array
+    const isTech = user.role && user.role.includes("technician");
+    let technicianProfile= {}
+
     let completeUser = { ...user };
 
-    // 2. If the user is a technician, fetch their professional profile
-    if (user.isTechnician) {
-      const techProfile = await Technician.findOne({ userId: user._id }).lean();
+    // 3. If they have the technician role, go grab their professional profile
+    if (isTech) {
+      const techProfile = await Technician.findOne({ userId: user.userId }).lean();
       
       if (techProfile) {
-        // 3. Merge them: Professional details + User details
-        // .lean() is used so we get plain JS objects instead of Mongoose Documents
-        completeUser = { 
-          ...user, 
-          technicianProfile: techProfile 
-        };
+        // Nest the professional data so it doesn't overwrite base user data
+        technicianProfile = techProfile;
       }
     }
 
-    // 4. Return the combined object
+    // 4. Return the full "Super Object"
     res.status(200).json({ 
       success: true, 
-      user: completeUser 
+      user: {...completeUser,...technicianProfile} 
     });
 
   } catch (error) {
