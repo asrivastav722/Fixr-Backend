@@ -207,7 +207,7 @@ const getMe = async (req, res) => {
                       newLat = lat;
                     }
                   } 
-                  // Optional: Handle object format if sent from other parts of the app
+                  // Optional: Handle object format if sent from other parts of the appd
                   else if (coordinates && typeof coordinates === 'object') {
                     const lat = coordinates.latitude || coordinates.lat;
                     const lng = coordinates.longitude || coordinates.lng;
