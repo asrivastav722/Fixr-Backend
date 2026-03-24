@@ -5,11 +5,11 @@ const apkUpdateController = require('../controllers/apkUpdateController');
 
 // 1. Define the absolute path to your updates folder
 // Since this file is in /routes, we go up one level to /backend/updates
-const updatesFolder = path.join(__dirname, '../../updates');
+const updatesFolder = path.join(__dirname, 'D:/FixerServer/updates');
 
 // 2. Serve the static bundle file
 // This makes index.android.bundle available at: your-tunnel-url/api/updates/index.android.bundle
-router.use('/download', express.static(updatesFolder, {
+router.use('/updates', express.static(updatesFolder, {
     setHeaders: (res) => {
         // Critical for OTA: Prevents the phone from caching an old version of the bundle
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
