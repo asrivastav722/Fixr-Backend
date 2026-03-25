@@ -2,15 +2,19 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const updatesFolder = path.join(__dirname, '../../updates');
+const updatesFolder = path.join(process.cwd(),'..', 'updates');
 
 exports.getManifest = (req, res) => {
     try {
         const bundlePath = path.join(updatesFolder, 'index.android.bundle');
+        console.log("Checking for bundle at:", bundlePath);
         
         if (!fs.existsSync(bundlePath)) {
-            return res.status(404).json({ error: "No bundle found" });
-        }
+        return res.status(404).json({ 
+            error: "No bundle found",
+            attemptedPath: bundlePath // Useful for one-time debugging
+        });
+    }
 
         const fileBuffer = fs.readFileSync(bundlePath);
         
