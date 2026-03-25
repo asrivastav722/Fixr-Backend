@@ -35,7 +35,7 @@ exports.getManifest = (req, res) => {
                 hash: hash,
                 key: `bundle-${updateIdentifier.slice(0, 8)}`, // UNIQUE KEY per version
                 contentType: "application/javascript",
-                url: `${req.protocol}://${req.get('host')}/api/updates/index.android.bundle?v=${updateIdentifier}` // Cache busting URL
+                url: `${req.protocol}://${req.get('host')}/api/apk/updates/index.android.bundle?v=${updateIdentifier}` // Cache busting URL
             },
             assets: [],
             metadata: { 
