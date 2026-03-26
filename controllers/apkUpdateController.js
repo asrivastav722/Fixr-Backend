@@ -54,7 +54,14 @@ exports.getManifest = (req, res) => {
                 url: `${process.env.BASE_URL}/api/apk/updates/index.android.bundle`
             },
             assets: [],
-            metadata: { branchName: "main", bundleUpdateId: stableId,expoConfig:{"version":"1.0.x"}  }
+            metadata: { branchName: "main", bundleUpdateId: stableId,expoConfig:{
+                    name: "Fixr",
+                    slug: "fixr",
+                    version: "1.0.x", // Your test value
+                    extra: {
+                        testKey: "OTA-Success"
+                    }}  
+                }
         });
 
     } catch (error) {
