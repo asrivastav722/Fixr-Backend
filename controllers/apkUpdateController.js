@@ -54,7 +54,7 @@ exports.getManifest = (req, res) => {
                 url: `${process.env.BASE_URL}/api/apk/updates/index.android.bundle`
             },
             assets: [],
-            metadata: { branchName: "main", bundleUpdateId: stableId }
+            metadata: { branchName: "main", bundleUpdateId: stableId,expoConfig:{"version":"1.0.x"}  }
         });
 
     } catch (error) {
