@@ -87,7 +87,7 @@ exports.getManifest = (req, res) => {
         
         if (signature) {
             const signatureHeader = `sig="${signature}"; keyid="main"`;
-            res.setHeader('expo-signature', signatureHeader);
+            // res.setHeader('expo-signature', signatureHeader);
             console.log("📧 Expo-Signature Header set.");
         }
 
