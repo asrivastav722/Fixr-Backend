@@ -66,7 +66,8 @@ exports.getManifest = (req, res) => {
                     runtimeVersion:"1.0.0",
                     sdkVersion: "54.0.0" // Matches your log
                 }
-            }
+            },
+            isVerified:true
     });
 
     } catch (error) {
