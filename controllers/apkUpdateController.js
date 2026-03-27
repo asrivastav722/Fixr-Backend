@@ -9,8 +9,6 @@ exports.getManifest = (req, res) => {
     try {
         const bundlePath = path.join(updatesFolder, 'index.android.bundle');
         const versionPath = path.join(updatesFolder, 'version.json'); // --- ADDED: Path to version file ---
-
-        console.log("Checking for bundle at:", bundlePath);
         
         if (!fs.existsSync(bundlePath)) {
             return res.status(404).json({ 
@@ -22,13 +20,20 @@ exports.getManifest = (req, res) => {
         // --- START: VERSION LOGIC ---
         let currentVersion = "1.0.0"; // Fallback
         if (fs.existsSync(versionPath)) {
-            try {
-                const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
-                currentVersion = versionData.version;
-                console.log("✅ Serving version:", currentVersion);
+        try {
+            const rawData = fs.readFileSync(versionPath, 'utf8').trim();
+            // Remove potential BOM characters if they still exist
+            const cleanData = rawData.replace(/^\uFEFF/, ''); 
+            
+            const versionData = JSON.parse(cleanData);
+            currentVersion = versionData.version;
+            console.log(`✅ Version identified: ${currentVersion}`);
             } catch (e) {
-                console.error("❌ Failed to parse version.json, using fallback.");
+            console.error("❌ JSON Parse Error:", e.message);
+            console.log("📝 Raw File Content was:", fs.readFileSync(versionPath, 'utf8'));
             }
+        } else {
+            console.error("❌ version.json is MISSING from", versionPath);
         }
         // --- END: VERSION LOGIC ---
 
