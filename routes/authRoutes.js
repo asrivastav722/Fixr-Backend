@@ -13,7 +13,7 @@ router.post("/request-otp", requestOtp);
 router.post("/verify-otp", verifyOtp);
 router.put('/update-profile', protect, updateProfile);
 
-// FIXED: Pass the handleUpload function as the second callback
+// FIXED: Pass the handleUpload function as the second callbdack
 // router.post('/upload', upload.si ngle('image'), handleUpload);
 router.post('/upload', (req, res, next) => {
     console.log("Raw Headers:", req.headers['content-type']); 
