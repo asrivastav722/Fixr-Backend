@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const target = 'D:/FixrServer/public/updates';
+const target = 'E:/FixrServer/public/updates';
 
 if (fs.existsSync(target)) {
     console.log("✅ Folder found!");
@@ -10,7 +10,7 @@ if (fs.existsSync(target)) {
     console.log("❌ Folder NOT found at:", target);
     // Check if D: drive is even visible
     try {
-        console.log("Available on D: root:", fs.readdirSync('D:/'));
+        console.log("Available on D: root:", fs.readdirSync('E:/'));
     } catch (e) {
         console.log("❌ Cannot even read D: drive root.");
     }
