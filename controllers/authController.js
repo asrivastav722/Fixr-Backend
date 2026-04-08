@@ -1,11 +1,15 @@
 const Technician = require("../models/TechnicianModel.js");
+const dotenv = require('dotenv');
 const User = require("../models/UserModel.js");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 const { S3Client } = require("@aws-sdk/client-s3");
 const { Upload } = require("@aws-sdk/lib-storage");
-const { MINIO_ENDPOINT,PORT,MINIO_PORT,MINIO_ACCESS_KEY,MINIO_BUCKET,MINIO_SECRET_KEY,BASE_URL,OTP_GATEWAY_URL,JWT_EXPIRY,JWT_SECRET} =process.env
 
+dotenv.config()
+const { MINIO_ENDPOINT,PORT,MINIO_PORT,MINIO_ACCESS_KEY,MINIO_BUCKET,MINIO_SECRET_KEY,BASE_URL,OTP_GATEWAY_URL,JWT_EXPIRY,JWT_SECRET,NODE_ENV} =process.env
+
+const isDev = NODE_ENV === `development`
 
 // --- 0. MinIO Configuration ---
 const s3Client = new S3Client({
@@ -23,14 +27,32 @@ const otpStore = {};
 // --- 1. Request OTP ---
 const requestOtp = async (req, res) => {
     const { phone } = req.body;
-    if (!phone) return res.status(400).json({ message: "Phone number is required" });
+    
+    if (!phone) {
+        return res.status(400).json({ success: false, message: "Phone number is required" });
+    }
 
     try {
-        const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+        // 1. Generate OTP (Hardcoded for dev, random for prod)
+        const generatedOtp = isDev ? "0000" : Math.floor(1000 + Math.random() * 9000).toString();
+        
+        // 2. Store it so the verify-otp endpoint can see it
         otpStore[phone] = generatedOtp;
-        setTimeout(() => delete otpStore[phone], 5 * 60 * 1000);
 
+        // 3. Short-circuit if in Dev Mode
+        if (isDev) {
+            console.log(`[DEV] OTP for ${phone}: ${generatedOtp}`);
+            return res.status(200).json({ 
+                success: true, 
+                message: "Dev mode: Use 0000" 
+            });
+        }
+
+        // 4. Production Only: Send the actual SMS
         const message = `Your Fixr OTP is: ${generatedOtp}`;
+        
+        // Auto-delete from memory after 5 mins
+        setTimeout(() => delete otpStore[phone], 5 * 60 * 1000);
 
         await axios.get(OTP_GATEWAY_URL, {
             params: { phone, message },
@@ -38,8 +60,13 @@ const requestOtp = async (req, res) => {
         });
 
         return res.status(200).json({ success: true, message: "OTP sent" });
+
     } catch (error) {
-        return res.status(500).json({ success: false, message: "SMS Gateway Offline" });
+        console.error("SMS Gateway Error:", error.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: "SMS Gateway Offline or Provider Error" 
+        });
     }
 };
 

@@ -57,14 +57,11 @@ exports.getManifest = (req, res) => {
 
         // Headers
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-        res.setHeader('expo-protocol-version', '1'); // --- UPDATED: Use '1' for SDK 54 ---
+        res.setHeader('expo-protocol-version', '1'); 
         res.setHeader('expo-sfv-version', '0');
         res.setHeader('content-type', 'application/json');
         res.setHeader('ngrok-skip-browser-warning', 'true');
         res.removeHeader('ETag');
-
-        // Note: Using res.json() works fine here since you aren't strictly 
-        // enforcing RSA signing yet. If you use RSA, change this to res.send(JSON.stringify(data))
         res.json({
             id: stableId,
             createdAt: fileTimestamp, 
@@ -96,7 +93,6 @@ exports.getManifest = (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
-
 
 exports.debugOta = (req, res) => {
     res.json({
