@@ -8,7 +8,7 @@ exports.getManifest = (req, res) => {
     console.log("Files in Updates Folder:", fs.readdirSync(updatesFolder))
     try {
         const bundlePath = path.join(updatesFolder, 'index.android.bundle');
-        const versionPath = path.join(updatesFolder, 'version.json'); // --- ADDED: Path to version file ---
+        const versionPath = path.join(updatesFolder, 'version.json'); // --- ADDED: Path to versicon file ---
         
         if (!fs.existsSync(bundlePath)) {
             return res.status(404).json({ 
