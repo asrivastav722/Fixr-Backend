@@ -49,7 +49,7 @@ router.get('/download-apk', (req, res) => {
         // This is the key header. We set it before anything else.
         res.setHeader('ngrok-skip-browser-warning', 'true');
         
-        // Optional: Ensure the browser knows it's an Android app
+        // Optional: Ensure the browsXer knows it's an Android app
         res.setHeader('Content-Type', 'application/vnd.android.package-archive');
 
         // Serve the file
