@@ -60,7 +60,6 @@ exports.getManifest = (req, res) => {
         res.setHeader('expo-protocol-version', '1'); 
         res.setHeader('expo-sfv-version', '0');
         res.setHeader('content-type', 'application/json');
-        res.setHeader('ngrok-skip-browser-warning', 'true');
         res.removeHeader('ETag');
         res.json({
             id: stableId,

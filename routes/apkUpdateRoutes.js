@@ -44,11 +44,7 @@ router.get('/download-apk', (req, res) => {
         }
 
         const filePath = path.join(apkFolder, apkFile);
-
-        // --- NGROK BYPASS ---
-        // This is the key header. We set it before anything else.
-        res.setHeader('ngrok-skip-browser-warning', 'true');
-        
+       
         // Optional: Ensure the browsXer knows it's an Android app
         res.setHeader('Content-Type', 'application/vnd.android.package-archive');
 
